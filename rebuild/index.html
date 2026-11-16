@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Igloo — a study rebuild</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230a1522'/%3E%3Ccircle cx='8' cy='9' r='5' fill='%237fd4ff'/%3E%3C/svg%3E" />
+<meta name="description" content="A hand-written study rebuild of the igloo.inc scroll architecture: three stacked WebGL scenes, a virtual infinite scroll and a synthesized sound bed." />
+<style>
+  :root{
+    --ink:#eaf4ff; --dim:#8ba4c2; --bg:#0a1522; --accent:#7fd4ff;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--mono)}
+  #gl{position:fixed;inset:0;display:block;width:100%;height:100%}
+  #veil{position:fixed;inset:0;background:var(--bg);opacity:1;pointer-events:none;transition:opacity .42s ease;z-index:5}
+
+  .hud{position:fixed;inset:0;z-index:6;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:22px 26px}
+  .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .mark{font-size:12px;letter-spacing:.16em;text-transform:uppercase;opacity:.92}
+  .mark .slash{color:var(--accent);margin:0 .5em;opacity:.8}
+  .tag{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);border:1px solid rgba(127,212,255,.28);border-radius:999px;padding:5px 11px}
+
+  .bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+  #hint{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim);transition:opacity .5s ease}
+  .bar{width:min(240px,34vw);height:1px;background:rgba(139,164,194,.3);position:relative}
+  .bar i{position:absolute;left:0;top:-1px;height:3px;background:var(--accent);width:0%;display:block;transition:width .12s linear}
+
+  button#sound{
+    white-space:nowrap;pointer-events:auto;cursor:pointer;background:transparent;color:var(--ink);
+    border:1px solid rgba(127,212,255,.3);border-radius:999px;padding:7px 13px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+    transition:border-color .2s ease,background .2s ease
+  }
+  button#sound:hover{border-color:var(--accent);background:rgba(127,212,255,.08)}
+  button#sound.off{color:var(--dim)}
+
+  .panel{
+    position:fixed;z-index:6;pointer-events:none;opacity:0;transition:opacity .5s ease,transform .5s ease;
+    transform:translateY(10px);
+  }
+  .panel.on{opacity:1;transform:none}
+
+  #panel-manifesto{
+    left:26px;bottom:74px;max-width:min(400px,80vw);
+    background:rgba(6,13,22,.52);backdrop-filter:blur(7px);border-radius:10px;
+    padding:14px 16px;border:1px solid rgba(127,212,255,.14)
+  }
+  #panel-manifesto h2{margin:0 0 8px;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:500}
+  #panel-manifesto p{margin:0;font-size:11.5px;line-height:1.7;color:#c8dbf0}
+
+  #panel-projects{
+    right:26px;top:84px;max-width:min(340px,80vw);pointer-events:auto;
+    background:rgba(6,13,22,.52);backdrop-filter:blur(7px);border-radius:10px;
+    padding:16px 16px 4px;border:1px solid rgba(127,212,255,.14);
+    max-height:46vh;overflow-y:auto;overscroll-behavior:contain
+  }
+  #panel-projects::-webkit-scrollbar{width:3px}
+  #panel-projects::-webkit-scrollbar-thumb{background:rgba(127,212,255,.35);border-radius:3px}
+  #panel-projects .card{border-left:1px solid rgba(127,212,255,.25);padding:2px 0 2px 16px;margin-bottom:26px}
+  #panel-projects .card h3{margin:0 0 4px;font-size:13px;letter-spacing:.06em;font-weight:500}
+  #panel-projects .card .date{font-size:10px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase}
+  #panel-projects .card p{margin:9px 0 0;font-size:11.5px;line-height:1.7;color:#b6cade}
+
+  #loader{position:fixed;inset:0;z-index:8;display:grid;place-items:center;background:var(--bg);transition:opacity .5s ease}
+  #loader.gone{opacity:0;pointer-events:none}
+  #loader span{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--dim)}
+
+  #fatal{position:fixed;inset:0;z-index:9;display:none;place-items:center;padding:32px;background:#12070a;color:#ffd7d7;font-size:12px;line-height:1.7;white-space:pre-wrap}
+  #fatal.on{display:grid}
+
+  @media (max-width:560px){
+    .hud{padding:16px}
+    .mark .slash,.mark .over{display:none}
+    .tag{font-size:9px;padding:4px 8px;letter-spacing:.16em}
+    button#sound{font-size:9px;padding:6px 9px;letter-spacing:.14em}
+    #panel-manifesto{left:16px;right:16px;bottom:66px;max-width:none}
+    #panel-projects{left:16px;right:16px;top:60px;max-width:none;max-height:34vh}
+    #panel-projects .card p{font-size:10.5px}
+    #hint{font-size:9px;letter-spacing:.18em}
+  }
+</style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+
+  <div class="hud">
+    <div class="top">
+      <span class="mark">Igloo<span class="slash">//////</span><span class="over">Study</span></span>
+      <div style="display:flex;gap:12px;align-items:center">
+        <span class="tag" id="scene-label">Entry</span>
+        <button id="sound" class="off" aria-pressed="false">Sound off</button>
+      </div>
+    </div>
+    <div class="bottom">
+      <span id="hint">Scroll to descend</span>
+      <div class="bar"><i id="bar-fill"></i></div>
+    </div>
+  </div>
+
+  <section class="panel" id="panel-manifesto">
+    <h2>////// Manifesto</h2>
+    <p>Rebuilt from the reverse-engineered structure, not the source: three stacked scenes, one infinite scroll, every camera move a damped follow of a scrubbed timeline. Geometry, shading and sound are generated here.</p>
+  </section>
+
+  <section class="panel" id="panel-projects" data-scroll>
+    <article class="card">
+      <h3>Portfolio 01 — Cubes</h3>
+      <div class="date">01 / 02 / 2020</div>
+      <p>Placeholder project copy. In the original this panel is a nested scroller, driven by its own wheel handler and eased at 0.1 per frame rather than the scene's scroll position.</p>
+    </article>
+    <article class="card">
+      <h3>Portfolio 02 — Overpass</h3>
+      <div class="date">02 / 02 / 2021</div>
+      <p>Placeholder project copy. Each cube fades, lifts and repositions independently while the outer scroll keeps moving — that separation is the interesting part to rebuild.</p>
+    </article>
+  </section>
+
+  <div id="loader"><span>Building scene</span></div>
+  <div id="fatal"></div>
+  <div id="veil"></div>
+
+  <script type="module">
+    // Surface module/runtime failures instead of failing silently.
+    const fatal = (msg) => {
+      const el = document.getElementById('fatal');
+      el.textContent = 'Rebuild failed to start:\n\n' + msg;
+      el.classList.add('on');
+      document.getElementById('loader').classList.add('gone');
+      console.error('[rebuild]', msg);
+    };
+    window.addEventListener('error', (e) => fatal((e.error && e.error.stack) || e.message));
+    window.addEventListener('unhandledrejection', (e) => fatal(String(e.reason && (e.reason.stack || e.reason))));
+  </script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
