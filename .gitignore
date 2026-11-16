@@ -1,0 +1,47 @@
+# Installed packages
+node_modules/
+**/node_modules/
+vendor/
+
+# Built apps and packaged releases
+dist/
+build/
+out/
+release/
+android/site/public/*.apk
+*.AppImage
+*.deb
+*.dmg
+*.exe
+
+# Study evidence and self-check output (deliverables are tracked; raw captures are not)
+study/
+checks/
+
+# Private apt state and unpacked system libraries used to run Electron here
+app/.apt/
+app/vendor/
+app/selfcheck/probe.png
+app/selfcheck/fixture/summary.md
+
+# Mirror of a third-party site used as study material, not our code
+sites/
+
+# Keys and secrets — never tracked
+*.key
+*.pem
+keys.json
+secrets.json
+.env
+.env.*
+credentials*
+
+# Local noise
+*.log
+.DS_Store
+Thumbs.db
+
+# Analysis artefacts from earlier study work
+artifacts/
+app/selfcheck/fixture/bridged-*.md
+app/selfcheck/fixture/session-*.md
