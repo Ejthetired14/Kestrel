@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+<title>Kestrel</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- sidebar -->
+  <aside id="sidebar">
+    <div class="side-head">
+      <div class="brand"><span class="brand-mark">◆</span><span class="brand-name">Kestrel</span><span class="brand-ver" id="app-version">0.1.0</span></div>
+      <button id="new-session" class="icon-btn" title="New session">+</button>
+    </div>
+    <div class="side-search"><input id="session-search" placeholder="Search sessions" /></div>
+    <div id="session-list" class="session-list"></div>
+    <div class="side-foot">
+      <button id="keys-open" class="ghost-btn">Keys</button>
+      <span id="key-summary" class="dim small">no keys</span>
+    </div>
+  </aside>
+
+  <!-- main -->
+  <main id="main">
+    <header id="topbar">
+      <div class="tb-left">
+        <span id="session-title" class="session-title">New session</span>
+        <span id="cwd" class="dim small mono"></span>
+      </div>
+      <div class="tb-right">
+        <select id="provider" class="select" title="Provider"></select>
+        <select id="model" class="select" title="Model"></select>
+        <select id="mode" class="select" title="Permission mode">
+          <option value="default">Default</option>
+          <option value="acceptEdits">Accept edits</option>
+          <option value="plan">Plan</option>
+          <option value="bypassPermissions">Bypass</option>
+        </select>
+        <span id="usage" class="usage mono">0 in / 0 out</span>
+      </div>
+    </header>
+
+    <section id="transcript" class="transcript" aria-live="polite"></section>
+
+    <footer id="composer-wrap">
+      <div id="composer-box">
+        <textarea id="composer" rows="1" placeholder="Ask Kestrel to change something…  (Enter to send, Shift+Enter for a newline)"></textarea>
+        <div class="composer-actions">
+          <span id="hint" class="dim small">@ files · / commands</span>
+          <button id="stop" class="ghost-btn hidden">Stop</button>
+          <button id="send" class="primary-btn">Send</button>
+        </div>
+      </div>
+      <div id="statusbar" class="statusbar mono">
+        <span id="status-state">idle</span>
+        <span id="status-tokens">tokens 0</span>
+        <span id="status-mode">mode default</span>
+      </div>
+    </footer>
+  </main>
+
+  <!-- right panel -->
+  <aside id="panel">
+    <div class="tabs">
+      <button class="tab active" data-tab="changes">Changes <span id="change-count" class="pill">0</span></button>
+      <button class="tab" data-tab="terminal">Terminal <span id="term-count" class="pill">0</span></button>
+    </div>
+    <div id="tab-changes" class="tab-body"><div class="empty">No file changes yet.</div></div>
+    <div id="tab-terminal" class="tab-body hidden"><div class="empty">No commands run yet.</div></div>
+  </aside>
+</div>
+
+<!-- permission dialog -->
+<div id="permission" class="overlay hidden">
+  <div class="dialog">
+    <h2>Permission needed</h2>
+    <p id="perm-text" class="dim"></p>
+    <pre id="perm-input" class="code"></pre>
+    <div class="dialog-actions">
+      <button id="perm-deny" class="ghost-btn">Deny</button>
+      <button id="perm-session" class="ghost-btn">Allow for session</button>
+      <button id="perm-allow" class="primary-btn">Allow once</button>
+    </div>
+  </div>
+</div>
+
+<!-- keys screen -->
+<div id="keys-screen" class="overlay hidden">
+  <div class="dialog wide">
+    <h2>Keys</h2>
+    <p class="dim">Keys are validated, then encrypted and stored outside this folder. They are never shown in full again.</p>
+    <div id="keys-rows"></div>
+    <div class="dialog-actions">
+      <button id="keys-close" class="ghost-btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

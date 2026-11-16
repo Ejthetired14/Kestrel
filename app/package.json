@@ -1,0 +1,22 @@
+{
+  "name": "kestrel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kestrel - a coding agent app (learning project)",
+  "type": "commonjs",
+  "main": "main.js",
+  "bin": {
+    "kestrel": "cli.js"
+  },
+  "scripts": {
+    "start": "electron .",
+    "cli": "node cli.js",
+    "selfcheck": "node selfcheck/run.js"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  },
+  "allowScripts": {
+    "electron": true
+  }
+}
