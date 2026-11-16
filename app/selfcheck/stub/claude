@@ -1,0 +1,180 @@
+#!/usr/bin/env node
+// Stand-in for the installed CLI, used only by the self-check. It speaks the
+// same stream-json line format and, when the prompt asks for it, the control
+// protocol for tool permission: it blocks on stdin until Kestrel answers.
+'use strict';
+
+const fs = require('node:fs');
+const path = require('node:path');
+const readline = require('node:readline');
+
+const argv = process.argv.slice(2);
+const promptIndex = argv.findIndex((a) => a === '-p');
+const prompt = promptIndex >= 0 ? String(argv[promptIndex + 1] || '') : '';
+const wantsDeny = prompt.includes('bridge-deny');
+const wantsAllow = prompt.includes('bridge-allow');
+const wantsSession = prompt.includes('bridge-session');
+const wantsPermission = wantsAllow || wantsDeny || wantsSession;
+
+const say = (obj) => process.stdout.write(JSON.stringify(obj) + '\n');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const init = (tools) =>
+  say({
+    type: 'system',
+    subtype: 'init',
+    claude_code_version: 'stub',
+    model: 'stub-model',
+    tools,
+    session_id: 'stub-session',
+  });
+
+const delta = (text) =>
+  say({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text } } });
+
+function result(text, inputTokens, outputTokens) {
+  say({
+    type: 'result',
+    subtype: 'success',
+    is_error: false,
+    duration_ms: 12,
+    num_turns: 2,
+    result: text,
+    session_id: 'stub-session',
+    total_cost_usd: 0.0004,
+    usage: { input_tokens: inputTokens, output_tokens: outputTokens },
+  });
+}
+
+function assistantToolUse(id, name, input) {
+  say({
+    type: 'assistant',
+    message: {
+      role: 'assistant',
+      content: [
+        { type: 'text', text: `Using ${name}. ` },
+        { type: 'tool_use', id, name, input },
+      ],
+    },
+  });
+}
+
+function toolResult(id, content, isError) {
+  say({
+    type: 'user',
+    message: {
+      role: 'user',
+      content: [{ type: 'tool_result', tool_use_id: id, content, is_error: Boolean(isError) }],
+    },
+  });
+}
+
+/** Ask Kestrel for permission and wait for the control_response on stdin. */
+function askPermission(toolName, input) {
+  return new Promise((resolve) => {
+    const requestId = 'req_' + Math.random().toString(36).slice(2, 8);
+    const rl = readline.createInterface({ input: process.stdin });
+    const onLine = (line) => {
+      let msg;
+      try {
+        msg = JSON.parse(line);
+      } catch {
+        return;
+      }
+      if (msg.type !== 'control_response') return;
+      const envelope = msg.response || {};
+      if (envelope.request_id !== requestId) return;
+      rl.close();
+      resolve(envelope.response || {});
+    };
+    rl.on('line', onLine);
+    say({
+      type: 'control_request',
+      request_id: requestId,
+      request: { subtype: 'can_use_tool', tool_name: toolName, input, permission_suggestions: [] },
+    });
+  });
+}
+
+function writeFile(rel, body) {
+  const target = path.resolve(rel);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, body);
+  return target;
+}
+
+async function plainConversation() {
+  init(['Read']);
+  delta('Hello from the Claude CLI stub. ');
+  await sleep(30);
+  assistantToolUse('tu_1', 'Read', { file_path: 'selfcheck/fixture/notes.txt' });
+  toolResult('tu_1', 'Kestrel self-check fixture.\nThe engine reads this file.', false);
+  say({
+    type: 'assistant',
+    message: { role: 'assistant', content: [{ type: 'text', text: 'I read the fixture through the CLI.' }] },
+  });
+  result('I read the fixture through the CLI.', 42, 17);
+}
+
+/** Two writes of the same tool in one turn, so a session allowance can be checked. */
+async function sessionAllowance() {
+  init(['Write']);
+  delta('The CLI needs to write two files. ');
+  await sleep(30);
+
+  const one = 'selfcheck/fixture/session-one.md';
+  const first = await askPermission('Write', { file_path: one, content: 'first file\n' });
+  const firstAllowed = first.behavior === 'allow';
+  assistantToolUse('tu_s1', 'Write', { file_path: one });
+  if (firstAllowed) writeFile(one, 'first file\n');
+  toolResult('tu_s1', firstAllowed ? 'file written' : 'Denied by the user in Kestrel.', !firstAllowed);
+
+  const two = 'selfcheck/fixture/session-two.md';
+  const second = await askPermission('Write', { file_path: two, content: 'second file\n' });
+  const secondAllowed = second.behavior === 'allow';
+  assistantToolUse('tu_s2', 'Write', { file_path: two });
+  if (secondAllowed) writeFile(two, 'second file\n');
+  toolResult('tu_s2', secondAllowed ? 'file written' : 'Denied by the user in Kestrel.', !secondAllowed);
+
+  const summary = `two writes: ${firstAllowed ? 'allow' : 'deny'}, ${secondAllowed ? 'allow' : 'deny'}`;
+  say({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: summary }] } });
+  result(summary, 20, 9);
+}
+
+async function singlePermission() {
+  const name = wantsDeny ? 'bridged-deny.md' : 'bridged-allow.md';
+  const target = path.join('selfcheck', 'fixture', name);
+  init(['Write']);
+  delta('The CLI wants to write a file and needs permission. ');
+  await sleep(30);
+
+  const answer = await askPermission('Write', { file_path: target, content: 'written by the stub CLI\n' });
+  const allowed = answer.behavior === 'allow';
+  const label = allowed ? 'allow' : 'deny';
+
+  assistantToolUse('tu_w', 'Write', { file_path: target });
+  if (allowed) writeFile(target, 'written by the stub CLI\n');
+  toolResult('tu_w', allowed ? 'file written' : 'Denied by the user in Kestrel.', !allowed);
+
+  say({
+    type: 'assistant',
+    message: { role: 'assistant', content: [{ type: 'text', text: `the CLI saw: ${label}` }] },
+  });
+  result(`the CLI saw: ${label}`, 12, 6);
+}
+
+async function main() {
+  if (wantsSession) return sessionAllowance();
+  if (wantsPermission) return singlePermission();
+  return plainConversation();
+}
+
+main()
+  .then(() => {
+    // The readline handle keeps stdin alive; exit the way a real one-shot CLI does.
+    setTimeout(() => process.exit(0), 40);
+  })
+  .catch((err) => {
+    process.stderr.write(String(err && err.stack) + '\n');
+    process.exit(1);
+  });
