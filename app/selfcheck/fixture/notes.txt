@@ -1,0 +1,3 @@
+Kestrel self-check fixture.
+The engine reads this file, then writes summary.md next to it.
+Line three exists so the read tool returns something with a line count.
