@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark light" />
+<title>Kestrel</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header id="topbar">
+  <button id="btn-sessions" class="icon" aria-label="Chats">☰</button>
+  <button id="model-chip" class="model-chip" aria-label="Choose model">
+    <span id="model-name">Kestrel</span>
+    <span class="chev" aria-hidden="true">▾</span>
+  </button>
+  <button id="btn-new" class="icon" aria-label="New chat">✎</button>
+  <button id="btn-more" class="icon" aria-label="More">⋯</button>
+</header>
+
+<div id="statusbar">
+  <div class="title-block" role="button" tabindex="0" aria-label="Project menu">
+    <span id="chat-title">New chat</span>
+    <span id="meta">starting…</span>
+  </div>
+</div>
+
+<main id="transcript"></main>
+
+<button id="jump" class="jump hidden" aria-label="Jump to latest">↓</button>
+
+<div id="composer-wrap">
+  <div id="attach-row" class="chips hidden"></div>
+  <div class="composer-card">
+    <button id="btn-attach" class="round" aria-label="Attach a file or photo">+</button>
+    <textarea id="composer" rows="1" placeholder="Message Kestrel" autocomplete="off"></textarea>
+    <button id="btn-mic" class="round" aria-label="Dictate">🎤</button>
+    <button id="send" class="send" aria-label="Send">↑</button>
+    <button id="stop" class="send stop hidden" aria-label="Stop">■</button>
+  </div>
+  <div id="composer-hint">Kestrel edits files in this project · <span id="hint-mode">asks first</span></div>
+</div>
+
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+<div id="drawer-scrim" class="scrim hidden"></div>
+<aside id="drawer" class="drawer hidden" aria-label="Chats">
+  <div class="drawer-head">
+    <b>Chats</b>
+    <button id="drawer-close" class="icon" aria-label="Close">✕</button>
+  </div>
+  <div class="drawer-tools">
+    <input id="drawer-search" class="field-input" placeholder="Search chats" autocomplete="off" />
+    <button id="drawer-new" class="primary">New chat</button>
+  </div>
+  <div id="drawer-body" class="drawer-body"></div>
+</aside>
+
+<div id="scrim" class="scrim hidden"></div>
+<section id="sheet" class="sheet hidden">
+  <div class="sheet-head"><b id="sheet-title">Kestrel</b><button id="sheet-close" class="icon">✕</button></div>
+  <div id="sheet-body" class="sheet-body"></div>
+</section>
+
+<div id="dialog" class="dialog-wrap hidden">
+  <div class="dialog">
+    <h2 id="dlg-title">Kestrel</h2>
+    <p id="dlg-text" class="dim"></p>
+    <input id="dlg-input" class="field-input hidden" autocomplete="off" spellcheck="false" />
+    <pre id="dlg-code" class="code hidden"></pre>
+    <div id="dlg-actions" class="actions"></div>
+  </div>
+</div>
+
+<script src="kestrel-skills.js"></script>
+<script src="kestrel-engine.js"></script>
+<script src="kestrel-selftest.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
