@@ -34,9 +34,26 @@ BUILD="$PWD/build"
 OUTDIR="$PWD/../artifacts"
 NAME="kestrel-mobile-3.2.4.apk"
 KS="$HOME/.kestrel-android/sideload.keystore"
+ASSETS="$BUILD/assets"
 
 rm -rf "$BUILD"
 mkdir -p "$BUILD/gen" "$BUILD/classes" "$BUILD/dex" "$OUTDIR"
+
+# Large web assets are stored in the repo as chunked, base64-encoded parts
+# (*.partN) to stay under GitHub's per-file size limits. Reassemble them into
+# their original files before packaging so aapt2 sees the full assets.
+echo "0/7 reconstructing chunked web assets"
+rm -rf "$ASSETS"
+mkdir -p "$ASSETS"
+cp -a "$APP/assets/." "$ASSETS/"
+while IFS= read -r -d '' first; do
+  base="${first%.part0}"
+  dir="$(dirname "$base")"
+  name="$(basename "$base")"
+  mapfile -t parts < <(find "$dir" -maxdepth 1 -name "$name.part*" -print | sort -V)
+  cat "${parts[@]}" | base64 -d > "$base"
+  rm -f "$dir"/$name.part*
+done < <(find "$ASSETS" -type f -name '*.part0' -print0)
 
 echo "1/7 compiling resources"
 "$BT/aapt2" compile --dir "$APP/res" -o "$BUILD/res.zip"
@@ -47,7 +64,7 @@ echo "2/7 linking manifest, resources and web assets"
   -I "$PLATFORM" \
   --manifest "$APP/AndroidManifest.xml" \
   --java "$BUILD/gen" \
-  -A "$APP/assets" \
+  -A "$ASSETS" \
   --auto-add-overlay \
   "$BUILD/res.zip"
 
