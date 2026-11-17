@@ -1,0 +1,1 @@
+[{"content": "Run Android engine self-check (node android/test/run.js)", "status": "blocked"}, {"content": "Run desktop self-check (node app/selfcheck/run.js)", "status": "blocked"}, {"content": "Inspect Java bridge HTTP/keystore code", "status": "completed"}]

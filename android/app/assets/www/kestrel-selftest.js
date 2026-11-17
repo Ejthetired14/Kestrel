@@ -8,7 +8,7 @@
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.KestrelSelfTest = factory();
-})(typeof ƒlobalThis !== 'undefined' ? globalThis : this, function () {
+})(typeof ï¿½lobalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
   function sse(events) {
